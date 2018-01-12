@@ -38,7 +38,7 @@
             height: 32px;
             display: inline-block;
         }
-        div[class^='ghost-'], div[class*=' ghost-']{
+        .ghost {
             background-color: black;
             width: 32px;
             height: 32px;
@@ -46,6 +46,7 @@
             background-size: contain;
             left: 0px;
             top: 0px;
+            position: absolute;
         }
         .ghost-red {
             background-image: url('img/ghost-red.gif');
@@ -125,7 +126,7 @@
 
         var worldElem, ninjaManElem, scoreElem, livesElem, gameOverElem, btnReplayYes, btnReplayNo;
         var size=32, score=0, lives=3, maxScore=0, direction='right', startPosX, startPosY;
-        var ghostRed, ghostBluey, ghostPinky, ghostPumpky
+        var ghostRed, ghostBluey, ghostPinky, ghostPumpky, timer;
 
         var world = [];
         var worldDict = {
@@ -144,6 +145,22 @@
             'onigiri': 5,
             'ghost': 15
         }
+        var redPos = {
+            x: 5,
+            y: 5
+        }
+        var blueyPos = {
+            x: 5,
+            y: 5
+        }
+        var pinkyPos = {
+            x: 5,
+            y: 5
+        }
+        var pumpkyPos = {
+            x: 5,
+            y: 5
+        }
 
         // Check if Dom has loaded in order to initiate game
         document.addEventListener('DOMContentLoaded', function() {
@@ -154,6 +171,11 @@
             gameOverElem=document.getElementById('game-over');
             btnReplayYes=document.getElementById('replay-yes');
             btnReplayNo=document.getElementById('replay-no');
+
+            ghostRed=document.getElementById("ghost-red");
+            ghostBluey=document.getElementById("ghost-bluey");
+            ghostPumpky=document.getElementById("ghost-pumpky");
+            ghostPinky=document.getElementById("ghost-pinky");
 
             btnReplayYes.addEventListener("click", resetGame);
             btnReplayNo.addEventListener("click", function(){ gameOverElem.style.display='none'; });
@@ -166,7 +188,7 @@
             world = [
                 [1,1,1,1,1,1,1,1,1,1,1],
                 [1,2,3,3,3,3,3,3,3,2,1],
-                [1,3,1,1,1,3,1,1,1,3,1],
+                [1,3,1,1,3,1,1,1,1,3,1],
                 [1,3,3,3,3,3,3,3,3,3,1],
                 [1,3,1,1,1,4,1,1,1,3,1],
                 [1,3,1,4,4,4,4,4,1,3,1],
@@ -196,24 +218,63 @@
             drawWorld();
             updateNinjaPos();
             updateScore();
+            startGhosts();
         }
 
         // Moethod to move ghosts around game board
         function startGhosts(){
-            var left = 0, lastFrame = +new Date, timer;
-            ghostRed=document.getElementById("ghost-red");
-
+            var left = 0, lastFrame = +new Date;
+            
             timer = setInterval(function() {
-            var now = +new Date, deltaT = now - lastFrame;
+                var now = +new Date, deltaT = now - lastFrame;
 
-            ghostRed.style.left = ( left += 10 * deltaT / 16 ) + "px";
-            lastFrame = now;
+                ghostMovement(redPos);
+                ghostMovement(blueyPos);
+                ghostMovement(pinkyPos);
+                ghostMovement(pumpkyPos);
 
-            if (left > 1000) {
-                clearInterval(timer);
+                updateGhostsPos();
+
+                lastFrame = now;
+
+            }, 500);
+        }
+
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+        }
+
+        function ghostMovement(ghostPos){
+            var dir=getRandomInt(1, 5);
+            console.log('dir: '+dir)
+            if(dir==1) { // LEFT
+                if(world[ghostPos.y][ghostPos.x-1]!=1) ghostPos.x--;
             }
+            else if (dir==2) { // UP
+                if(world[ghostPos.y-1][ghostPos.x]!=1) ghostPos.y--;
+            }
+            else if (dir==3) { // RIGHT
+                if(world[ghostPos.y][ghostPos.x+1]!=1) ghostPos.x++;
+            }
+            else if (dir==4) { // DOWN
+                if(world[ghostPos.y+1][ghostPos.x]!=1) ghostPos.y++;
+            }
+        }
 
-            }, 16);
+        function updateGhostsPos(){
+            ghostRed.style.left = (redPos.x*size) + "px";
+            ghostRed.style.top = (redPos.y*size) + "px";
+
+            ghostBluey.style.left = (blueyPos.x*size) + "px";
+            ghostBluey.style.top = (blueyPos.y*size) + "px";
+
+            ghostPinky.style.left = (pinkyPos.x*size) + "px";
+            ghostPinky.style.top = (pinkyPos.y*size) + "px";
+
+            ghostPumpky.style.left = (pumpkyPos.x*size) + "px";
+            ghostPumpky.style.top = (pumpkyPos.y*size) + "px";
         }
 
         // Draw the Game Board within the world
@@ -244,8 +305,6 @@
             }
 
             worldElem.innerHTML=gameBoard;
-
-            startGhosts();
         }
 
         // Update NinjaMan's position and direction
@@ -291,6 +350,7 @@
         // Display End Game to user and remove keydown listener
         function endGame(){
             document.removeEventListener("keydown", checkNinjaMove);
+            clearInterval(timer);
             gameOverElem.style.display='inline-block';
             gameOverElem.style.width=(world.length*size)-size+'px';
             gameOverElem.style.height=(world.length*size)-size+'px';
@@ -306,19 +366,19 @@
         function checkNinjaMove(e){
 
             if(e.keyCode == 37) { // LEFT
-                if(world[ninjaManPos.y][ninjaManPos.x-1]!=1) ninjaManPos.x--;
+                if(world[ninjaManPos.y][ninjaManPos.x-1]!=1&&world[ninjaManPos.y][ninjaManPos.x-1]!=4) ninjaManPos.x--;
                 direction = 'left';
             }
             else if (e.keyCode == 38) { // UP
-                if(world[ninjaManPos.y-1][ninjaManPos.x]!=1) ninjaManPos.y--;
+                if(world[ninjaManPos.y-1][ninjaManPos.x]!=1&&world[ninjaManPos.y-1][ninjaManPos.x]!=4) ninjaManPos.y--;
                 direction = 'up';
             }
             else if (e.keyCode == 39) { // RIGHT
-                if(world[ninjaManPos.y][ninjaManPos.x+1]!=1) ninjaManPos.x++;
+                if(world[ninjaManPos.y][ninjaManPos.x+1]!=1&&world[ninjaManPos.y][ninjaManPos.x+1]!=4) ninjaManPos.x++;
                 direction = 'right';
             }
             else if (e.keyCode == 40) { // DOWN
-                if(world[ninjaManPos.y+1][ninjaManPos.x]!=1) ninjaManPos.y++;
+                if(world[ninjaManPos.y+1][ninjaManPos.x]!=1&&world[ninjaManPos.y+1][ninjaManPos.x]!=4) ninjaManPos.y++;
                 direction = 'down';
             }
 
@@ -338,6 +398,10 @@
     <div id="lives">Lives: <span id="lives-val">3</span></div>
     <div id="score">Score: <span id="score-val">000</span></div>
     <div id="ninjaman"></div>
+    <div id="ghost-red" class="ghost ghost-red"></div>
+    <div id="ghost-bluey" class="ghost ghost-bluey"></div>
+    <div id="ghost-pumpky" class="ghost ghost-pumpky"></div>
+    <div id="ghost-pinky" class="ghost ghost-pinky"></div>
 	<div id="world"></div>
 </body>
 </html>
