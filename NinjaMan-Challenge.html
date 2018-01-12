@@ -1,0 +1,343 @@
+<html>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        .wall {
+            background-color: blue;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+        }
+        .sushi {
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            background-image: url('img/sushi.png');
+            background-size: contain;
+        }
+        .onigiri {
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            background-image: url('img/onigiri.png');
+            background-size: contain;
+        }
+        .blank {
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+        }
+        .ghost-space {
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+        }
+        div[class^='ghost-'], div[class*=' ghost-']{
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            background-size: contain;
+            left: 0px;
+            top: 0px;
+        }
+        .ghost-red {
+            background-image: url('img/ghost-red.gif');
+        }
+        .ghost-bluey {
+            background-image: url('img/ghost-bluey.gif');
+        }
+        .ghost-pinky {
+            background-image: url('img/ghost-pinky.gif');
+        }
+        .ghost-pumpky {
+            background-image: url('img/ghost-pumpky.gif');
+        }
+        #ninjaman {
+            background-color: black;
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            background-image: url('img/ninja-right.gif');
+            background-size: contain;
+            position: absolute;
+            left: 32px;
+            top: 32px;
+        }
+        #lives {
+            font-family: arial;
+            color: white;
+            display: inline-block;
+            position: absolute;
+            left: 10px;
+            top: 10px;
+        }
+        #score {
+            font-family: arial;
+            color: white;
+            display: inline-block;
+            text-align: right;
+            position: absolute;
+            left: 250px;
+            top: 10px;
+        }
+        #game-over {
+            background-color: black;
+            font-family: arial;
+            color: white;
+            position: absolute;
+            left: 0px;
+            top: 32px;
+            z-index: 1;
+            display: none;
+            opacity: 0.75;
+        }
+        #game-over p, #game-over div {
+            text-align: center;
+            margin: 35px;
+        }
+        #game-over p#game-over-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 80px;
+        }
+        #game-over button {
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+    </style>
+    <script type="text/javascript">
+        
+        // Keep score of how many shushi's ninjaman eats
+        // sushi  10pts, ongiri = 5pts
+
+        // Intermediate challenge - Random World
+
+        // Advanced challenge - Create ghosts that chase ninjaman
+
+        // Advanced challenge - Give NinjaMan 3 lives where Game Over occurs when a ghost hits NinjaMan 3 times
+
+        var worldElem, ninjaManElem, scoreElem, livesElem, gameOverElem, btnReplayYes, btnReplayNo;
+        var size=32, score=0, lives=3, maxScore=0, direction='right', startPosX, startPosY;
+        var ghostRed, ghostBluey, ghostPinky, ghostPumpky
+
+        var world = [];
+        var worldDict = {
+            0: 'blank',
+            1: 'wall',
+            2: 'sushi',
+            3: 'onigiri',
+            4: 'ghost-space'
+        }
+        var ninjaManPos = {
+            x: 0,
+            y: 0
+        }
+        var scoreVals = {
+            'sushi': 10,
+            'onigiri': 5,
+            'ghost': 15
+        }
+
+        // Check if Dom has loaded in order to initiate game
+        document.addEventListener('DOMContentLoaded', function() {
+            worldElem=document.getElementById("world");
+            ninjaManElem=document.getElementById("ninjaman");
+            livesElem=document.getElementById('lives-val');
+            scoreElem=document.getElementById('score-val');
+            gameOverElem=document.getElementById('game-over');
+            btnReplayYes=document.getElementById('replay-yes');
+            btnReplayNo=document.getElementById('replay-no');
+
+            btnReplayYes.addEventListener("click", resetGame);
+            btnReplayNo.addEventListener("click", function(){ gameOverElem.style.display='none'; });
+
+            resetGame();
+        });
+
+        
+        function createNewWorld(){
+            world = [
+                [1,1,1,1,1,1,1,1,1,1,1],
+                [1,2,3,3,3,3,3,3,3,2,1],
+                [1,3,1,1,1,3,1,1,1,3,1],
+                [1,3,3,3,3,3,3,3,3,3,1],
+                [1,3,1,1,1,4,1,1,1,3,1],
+                [1,3,1,4,4,4,4,4,1,3,1],
+                [1,3,1,4,4,4,4,4,1,3,1],
+                [1,3,1,1,1,1,1,1,1,3,1],
+                [1,3,3,3,3,0,3,3,3,3,1],
+                [1,3,1,1,1,1,3,1,1,3,1],
+                [1,2,3,3,3,3,3,3,3,2,1],
+                [1,1,1,1,1,1,1,1,1,1,1]
+            ];
+        }
+
+        // Reset values for a new game
+        function resetGame(){
+            score=0;
+            lives=3;
+            maxScore=0;
+            ninjaManPos.x=0;
+            ninjaManPos.y=0;
+            direction='right';
+
+            createNewWorld();
+
+            gameOverElem.style.display='none';
+            document.addEventListener("keydown", checkNinjaMove);
+
+            drawWorld();
+            updateNinjaPos();
+            updateScore();
+        }
+
+        // Moethod to move ghosts around game board
+        function startGhosts(){
+            var left = 0, lastFrame = +new Date, timer;
+            ghostRed=document.getElementById("ghost-red");
+
+            timer = setInterval(function() {
+            var now = +new Date, deltaT = now - lastFrame;
+
+            ghostRed.style.left = ( left += 10 * deltaT / 16 ) + "px";
+            lastFrame = now;
+
+            if (left > 1000) {
+                clearInterval(timer);
+            }
+
+            }, 16);
+        }
+
+        // Draw the Game Board within the world
+        function drawWorld(){
+            var gameBoard='';
+            var initiateMax=(maxScore===0)?true:false;
+
+            for(var row=0;row<world.length;row++){
+                gameBoard+='<div class="row">';
+                for(var col=0;col<world[row].length;col++){
+
+                    // Set NinjaMan's position to the only Blank Space if not already set
+                    if(ninjaManPos.x===0&&ninjaManPos.y===0&&world[row][col]===0){
+                        startPosY=row;
+                        startPosX=col;
+                        ninjaManPos.y=startPosY;
+                        ninjaManPos.x=startPosX;
+                    }
+
+                    // Find the Max Score possible to determine if the board is clear
+                    if((world[row][col]===2||world[row][col]===3)&&initiateMax){
+                        maxScore+=scoreVals[worldDict[world[row][col]]];
+                    }
+
+                    gameBoard+='<div id="'+worldDict[world[row][col]]+'" class="'+worldDict[world[row][col]]+'"></div>';
+                }
+                gameBoard+='</div>';
+            }
+
+            worldElem.innerHTML=gameBoard;
+
+            startGhosts();
+        }
+
+        // Update NinjaMan's position and direction
+        function updateNinjaPos(){
+            ninjaManElem.style.left = (ninjaManPos.x*size)+"px";
+            ninjaManElem.style.top = (ninjaManPos.y*size)+"px";
+            ninjaManElem.style.backgroundImage="url('img/ninja-"+direction+".gif')";
+            checkSpaceforHit();
+        }
+
+        // Check if NinjaMan has hit anything
+        function checkSpaceforHit(){
+            if(world[ninjaManPos.y][ninjaManPos.x]===2||world[ninjaManPos.y][ninjaManPos.x]===3){
+                score+=scoreVals[worldDict[world[ninjaManPos.y][ninjaManPos.x]]];
+                updateScore();
+
+                world[ninjaManPos.y][ninjaManPos.x]=0;
+                drawWorld();
+
+                if(score===maxScore) endGame();
+            }else if(world[ninjaManPos.y][ninjaManPos.x]>=5&&world[ninjaManPos.y][ninjaManPos.x]<=8){
+                ninjaManDied();
+            }
+
+        }
+
+        // If NinjaMan died then reduce lives, check if game over or reset NinjaMan position
+        function ninjaManDied(){
+            lives--;
+
+            updateScore();
+
+            if(lives===0){
+                endGame();
+            }else{
+                ninjaManPos.y=startPosY;
+                ninjaManPos.x=startPosX;
+
+                updateNinjaPos();
+            }
+        }
+
+        // Display End Game to user and remove keydown listener
+        function endGame(){
+            document.removeEventListener("keydown", checkNinjaMove);
+            gameOverElem.style.display='inline-block';
+            gameOverElem.style.width=(world.length*size)-size+'px';
+            gameOverElem.style.height=(world.length*size)-size+'px';
+        }
+
+        // Update score to the player
+        function updateScore(){
+            livesElem.innerHTML=lives;
+            scoreElem.innerHTML=score;
+        }
+
+        // Function for detecting keyboard events for NinjaMan movement
+        function checkNinjaMove(e){
+
+            if(e.keyCode == 37) { // LEFT
+                if(world[ninjaManPos.y][ninjaManPos.x-1]!=1) ninjaManPos.x--;
+                direction = 'left';
+            }
+            else if (e.keyCode == 38) { // UP
+                if(world[ninjaManPos.y-1][ninjaManPos.x]!=1) ninjaManPos.y--;
+                direction = 'up';
+            }
+            else if (e.keyCode == 39) { // RIGHT
+                if(world[ninjaManPos.y][ninjaManPos.x+1]!=1) ninjaManPos.x++;
+                direction = 'right';
+            }
+            else if (e.keyCode == 40) { // DOWN
+                if(world[ninjaManPos.y+1][ninjaManPos.x]!=1) ninjaManPos.y++;
+                direction = 'down';
+            }
+
+            updateNinjaPos();
+        }
+    </script>
+
+<body>
+    <div id="game-over">
+        <p id="game-over-text">Game Over</p>
+        <p>Play Again?</p>
+        <div>
+            <button id="replay-yes">Yes</button>
+            <button id="replay-no">No</button>
+        </div>
+    </div>
+    <div id="lives">Lives: <span id="lives-val">3</span></div>
+    <div id="score">Score: <span id="score-val">000</span></div>
+    <div id="ninjaman"></div>
+	<div id="world"></div>
+</body>
+</html>
